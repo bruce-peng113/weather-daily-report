@@ -6,7 +6,6 @@
 
 # 生成产物
 data.json
-dashboard.png
 
 # 内部目录 & 打包文件
 .workbuddy/
