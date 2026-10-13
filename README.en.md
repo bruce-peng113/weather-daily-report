@@ -2,6 +2,8 @@
 
 A multi-city weather dashboard for apparel / e-commerce operations. It automatically pulls weather data, generates a visual dashboard, and pushes images to a Feishu (Lark) group.
 
+> ⚠️ **Current version is China-only**: the data source is Amap Weather (Chinese cities only), the map is a China map, and the push channel is Feishu. A global/international version is planned but not yet available.
+
 > Background: when you sell clothes, you have to watch the weather every day to decide what to stock and which items to promote. This tool automates the whole "watching the weather" routine — every morning it generates a daily report for 36+ cities and pushes it straight to your Feishu group, so you can see national hot/cold spots, cooling cities, and dressing advice at a glance.
 
 ## Features
