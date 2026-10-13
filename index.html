@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>每日天气预警日报</title>
+<style>
+  :root {
+    --north-color: #2c4a6e;
+    --south-color: #b5502a;
+    --bg: #f5f5f0;
+    --card-bg: #fff;
+    --text: #2a2a2a;
+    --text-sub: #666;
+    --border: #e5e5e0;
+    --temp-blue: #4a90d9;
+    --temp-yellow: #f0c94a;
+    --temp-red: #d95040;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 20px;
+  }
+  .title { font-size: 28px; font-weight: 700; }
+  .subtitle { font-size: 13px; color: var(--text-sub); margin-top: 6px; }
+  .meta-right { text-align: right; font-size: 12px; color: var(--text-sub); }
+  .meta-right #version, .meta-right #dataSource {
+    font-size: 9px;
+    color: #c5c5be;
+    line-height: 1.3;
+  }
+  .date-badge {
+    background: #f0c94a;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 13px;
+    margin-bottom: 4px;
+    display: inline-block;
+  }
+  .summary-bar {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 14px 20px;
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    margin-bottom: 20px;
+    font-size: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+  .summary-item strong { font-size: 20px; }
+  .summary-item span { color: var(--text-sub); font-size: 12px; margin-left: 4px; }
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .side-panel { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+  .side-header {
+    color: #fff;
+    padding: 12px 18px;
+    font-size: 16px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .side-header.north { background: var(--north-color); }
+  .side-header.south { background: var(--south-color); }
+  .side-header small { font-weight: 400; font-size: 11px; opacity: 0.85; }
+  .region { border-bottom: 1px solid var(--border); padding: 14px 18px; }
+  .region:last-child { border-bottom: none; }
+  .region-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .region-num {
+    display: inline-block;
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    text-align: center;
+    line-height: 20px;
+    font-size: 12px;
+    color: #fff;
+  }
+  .north .region-num { background: var(--north-color); }
+  .south .region-num { background: var(--south-color); }
+  .region-tag { margin-left: auto; font-size: 11px; color: var(--text-sub); font-weight: 400; }
+  .city-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    padding: 4px 0;
+  }
+  .city-province { color: var(--text-sub); font-size: 11px; width: 38px; flex-shrink: 0; }
+  .city-name { font-weight: 600; width: 56px; flex-shrink: 0; }
+  .city-weather {
+    flex: 1;
+    color: var(--text-sub);
+    font-size: 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .city-weather.weather-alert {
+    color: #c0392b;
+    font-weight: 600;
+  }
+  .city-temp {
+    width: 78px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 2px 0;
+    border-radius: 10px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .city-lastyear { width: 76px; font-size: 10px; color: #999; flex-shrink: 0; text-align: right; }
+  .city-trend {
+    width: 110px;
+    flex-shrink: 0;
+  }
+  .city-trend svg { display: block; }
+  .clothing-tip {
+    margin-top: 10px;
+    background: #eef4ee;
+    border-left: 3px solid #7aa87a;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 4px;
+    color: #3a5a3a;
+  }
+  .region-summary {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text-sub);
+  }
+  #chinaMap {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px 12px;
+  }
+  #chinaMap .map-title { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+  #chinaMap .map-title small { font-weight: 400; font-size: 10px; color: var(--text-sub); margin-left: 4px; }
+  #chinaMap svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+  .map-city-label { font-size: 8px; fill: #333; }
+  .map-city-label.alert { fill: #c0392b; font-weight: 700; }
+  .map-legend { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 9px; color: #888; margin-top: 2px; }
+  .key-judgment {
+    margin-top: 20px;
+    background: #fdf6e3;
+    border: 1px solid #f0e0b0;
+    border-radius: 10px;
+    padding: 12px 18px;
+    font-size: 13px;
+  }
+  .key-judgment strong { color: #b8860b; }
+  .actions {
+    margin-top: 14px;
+    background: var(--card-bg);
+    border-radius: 10px;
+    padding: 14px 18px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    font-size: 12px;
+  }
+  .action-block .label { font-weight: 700; color: #c05040; margin-bottom: 4px; }
+  .action-block .text { color: var(--text-sub); line-height: 1.5; }
+  .footer-note { margin-top: 16px; text-align: center; font-size: 11px; color: #aaa; }
+  .controls {
+    position: fixed;
+    top: 16px; right: 16px;
+    display: flex;
+    gap: 8px;
+    z-index: 100;
+  }
+  .controls button {
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+  .controls button:hover { background: #f5f5f5; }
+  @media print { .controls { display: none; } }
+  body.png-mode .controls { display: none; }
+  body.png-mode { padding-bottom: 10px; }
+  body.png-mode .footer-note { margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <button onclick="window.print()">🖨️ 导出图片/PDF</button>
+  <button onclick="loadTomorrow()">📅 看明天</button>
+</div>
+
+<div class="header">
+  <div>
+    <div class="title">每日天气预警日报</div>
+    <div class="subtitle" id="subtitle">7 大区 · 37 核心城市 · 冷暖一图分</div>
+  </div>
+  <div class="meta-right">
+    <div class="date-badge" id="dateBadge">2026-10-13</div>
+    <div id="version">v7-自动生成</div>
+    <div id="dataSource">模拟数据</div>
+  </div>
+</div>
+
+<div class="summary-bar" id="summaryBar"></div>
+
+<div class="two-col">
+  <div class="side-panel" id="northPanel">
+    <div class="side-header north">⬆ 北方 <small>东北·华北·西北 14 城</small></div>
+    <div id="northRegions"></div>
+    <div id="chinaMap"></div>
+  </div>
+  <div class="side-panel" id="southPanel">
+    <div class="side-header south">⬇ 南方 <small>华东·华中·华南·西南 23 城</small></div>
+    <div id="southRegions"></div>
+  </div>
+</div>
+
+<div class="key-judgment" id="keyJudgment"></div>
+
+<div class="actions" id="actions"></div>
+
+<div class="footer-note">数据来源：高德天气 · 中国气象色阶 · <strong>Bruce AI 助理提供技术支持</strong></div>
+
+<script>
+// 截图模式（?png=1）：隐藏按钮，紧凑底部
+if (location.search.includes('png=1')) document.body.classList.add('png-mode');
+
+function tempColor(high) {
+  // 参考中国气象局色标：冷=蓝 → 热=红
+  if (high >= 35) return '#c0392b';   // 高温 红
+  if (high >= 30) return '#e74c3c';   // 炒热 橙红
+  if (high >= 26) return '#f39c12';   // 偏热 橙
+  if (high >= 22) return '#f0c94a';   // 温暖 黄
+  if (high >= 17) return '#a3b86c';   // 舒适 黄绿
+  if (high >= 12) return '#6db3a8';   // 微凉 青
+  if (high >= 6)  return '#5a9bd5';   // 冷 浅蓝
+  return '#3a6ea5';                    // 严寒 深蓝
+}
+
+function weatherIcon(w) {
+  // 天气文字 → emoji 图标；"X转Y" 取转后的 Y 作为趋势
+  if (!w) return '🌫️';
+  let key = w;
+  if (key.includes('转')) {
+    key = key.split('转')[1] || key;  // 取"转"后面的天气
+  }
+  if (key.includes('暴雪')) return '❄️';
+  if (key.includes('大雪')) return '🌨️';
+  if (key.includes('中雪') || key.includes('小雪') || key.includes('雨夹雪')) return '🌨️';
+  if (key.includes('雪')) return '🌨️';
+  if (key.includes('暴雨')) return '🌧️';
+  if (key.includes('大雨') || key.includes('中雨')) return '🌧️';
+  if (key.includes('雷阵雨') || key.includes('雷雨')) return '⛈️';
+  if (key.includes('阵雨')) return '🌦️';
+  if (key.includes('小雨') || key.includes('雨')) return '🌧️';
+  if (key.includes('雾') || key.includes('霾')) return '🌫️';
+  if (key.includes('沙尘') || key.includes('浮尘') || key.includes('扬沙')) return '🌪️';
+  if (key.includes('阴')) return '☁️';
+  if (key.includes('多云')) return '⛅';
+  if (key.includes('晴')) return '☀️';
+  return '🌤️';
+}
+
+function renderAll(data) {
+  // 顶部汇总
+  const s = data.todaySummary;
+  document.getElementById('summaryBar').innerHTML = `
+    <div class="summary-item">今日展宽 <strong>${s.highest.value}</strong><span>${s.highest.city}</span></div>
+    <div class="summary-item">最低 <strong>${s.lowest.value}</strong><span>${s.lowest.city}</span></div>
+    <div class="summary-item">全国均温 <strong>${s.nationalAvg}</strong></div>
+    <div class="summary-item">需重 <strong>${s.over30}</strong></div>
+    <div style="margin-left:auto; font-size:11px; color:var(--text-sub); display:flex; align-items:center; gap:10px;">
+      <span style="display:inline-flex; align-items:center; height:10px; border-radius:5px; overflow:hidden; width:110px;">
+        <span style="flex:1; height:100%; background:#3a6ea5;"></span>
+        <span style="flex:1; height:100%; background:#5a9bd5;"></span>
+        <span style="flex:1; height:100%; background:#6db3a8;"></span>
+        <span style="flex:1; height:100%; background:#a3b86c;"></span>
+        <span style="flex:1; height:100%; background:#f0c94a;"></span>
+        <span style="flex:1; height:100%; background:#f39c12;"></span>
+        <span style="flex:1; height:100%; background:#e74c3c;"></span>
+        <span style="flex:1; height:100%; background:#c0392b;"></span>
+      </span>
+      <span>冷 → 热</span>
+    </div>
+  `;
+  document.getElementById('dateBadge').textContent = data.meta.date;
+  document.getElementById('version').textContent = data.meta.version;
+  document.getElementById('dataSource').textContent = data.meta.dataSource;
+
+  // 两侧区域
+  const north = data.regions.filter(r => r.side === 'north');
+  const south = data.regions.filter(r => r.side === 'south');
+  document.getElementById('northRegions').innerHTML = north.map(renderRegion).join('');
+  document.getElementById('southRegions').innerHTML = south.map(renderRegion).join('');
+
+  // 关键判断
+  document.getElementById('keyJudgment').innerHTML = `
+    <strong>关键判断</strong> &nbsp;
+    <span style="color:#c05040; font-weight:600;">预警：</span>${data.keyJudgment.warning}；&nbsp;
+    <span style="color:#3a5a3a; font-weight:600;">无预警：</span>${data.keyJudgment.noWarning}
+  `;
+
+  // 全国温度地图
+  renderMap(data);
+
+  // 行动建议
+  const a = data.actions;
+  document.getElementById('actions').innerHTML = `
+    <div class="action-block"><div class="label">${a.restock.label}</div><div class="text">${a.restock.text}</div></div>
+    <div class="action-block"><div class="label">${a.wash.label}</div><div class="text">${a.wash.text}</div></div>
+    <div class="action-block"><div class="label">${a.outdoor.label}</div><div class="text">${a.outdoor.text}</div></div>
+  `;
+}
+
+function trendSparkline(trend) {
+  // 未来几天最高温迷你折线（SVG）
+  if (!trend || !Array.isArray(trend) || trend.length < 2) return '';
+  const vals = trend.filter(v => v !== null && v !== undefined);
+  if (vals.length < 2) return '';
+  const W = 110, H = 22, PAD = 3;
+  const min = Math.min(...vals), max = Math.max(...vals);
+  const range = (max - min) || 1;
+  const stepX = (W - PAD * 2) / (vals.length - 1);
+  const pts = vals.map((v, i) => {
+    const x = PAD + i * stepX;
+    const y = H - PAD - ((v - min) / range) * (H - PAD * 2);
+    return [x, y];
+  });
+  const line = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const dots = pts.map(p => `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="1.8" fill="#888"/>`).join('');
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+    <polyline points="${pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ')}" fill="none" stroke="#9aa5b1" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+    ${dots}
+  </svg>`;
+}
+
+function isAlertWeather(w) {
+  // 有降水/雾霾/沙尘/雷等，视为需要关注的天气
+  return /雨|雪|雷|霾|雾|沙|暴|雹|冻/.test(w || '');
+}
+
+// 城市 → 经纬度（用于地图定位）
+const CITY_COORDS = {
+  "哈尔滨": [126.53, 45.80], "长春": [125.32, 43.88], "沈阳": [123.43, 41.80], "大连": [121.60, 38.91],
+  "北京": [116.41, 39.90], "天津": [117.20, 39.08], "石家庄": [114.51, 38.04], "太原": [112.55, 37.87], "呼和浩特": [111.65, 40.82],
+  "西安": [108.95, 34.27], "兰州": [103.83, 36.06], "银川": [106.23, 38.49], "西宁": [101.78, 36.62], "乌鲁木齐": [87.62, 43.83],
+  "南京": [118.80, 32.06], "苏州": [120.58, 31.30], "杭州": [120.16, 30.27], "宁波": [121.54, 29.87],
+  "合肥": [117.23, 31.82], "福州": [119.30, 26.07], "厦门": [118.09, 24.48], "济南": [117.12, 36.65], "青岛": [120.38, 36.07],
+  "武汉": [114.31, 30.59], "长沙": [112.94, 28.23], "郑州": [113.63, 34.75], "南昌": [115.86, 28.68],
+  "广州": [113.26, 23.13], "深圳": [114.06, 22.54], "海口": [110.32, 20.04], "南宁": [108.32, 22.82],
+  "成都": [104.07, 30.57], "重庆": [106.55, 29.56], "昆明": [102.71, 25.04], "贵阳": [106.63, 26.65], "拉萨": [91.14, 29.65],
+};
+
+function renderMap(data) {
+  const W = 560, H = 440;
+  const LON_MIN = 73, LON_MAX = 136, LAT_MIN = 17, LAT_MAX = 54;
+  const px = lon => (lon - LON_MIN) / (LON_MAX - LON_MIN) * W;
+  const py = lat => H - (lat - LAT_MIN) / (LAT_MAX - LAT_MIN) * H;
+
+  // 收集代表城市数据
+  const REPS = ["哈尔滨", "北京", "乌鲁木齐", "杭州", "武汉", "广州", "成都"];
+  const cityData = {};
+  data.regions.forEach(r => r.cities.forEach(c => { cityData[c.name] = c; }));
+
+  // 省份 → 代表城市温度（用该省在 36 城里的城市，无则用最近区平均）
+  const PROV_TEMP = {};
+  data.regions.forEach(r => {
+    r.cities.forEach(c => {
+      const prov = c.province;
+      const key = prov;  // 用省份名
+      (PROV_TEMP[key] = PROV_TEMP[key] || []).push(c.high);
+    });
+  });
+
+  function drawDots() {
+    let dots = '';
+    REPS.forEach(name => {
+      const c = cityData[name];
+      const co = CITY_COORDS[name];
+      if (!c || !co) return;
+      const x = px(co[0]), y = py(co[1]);
+      const rad = 4 + c.high / 40 * 4;
+      const alert = isAlertWeather(c.weather);
+      dots += `
+        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${rad.toFixed(1)}" fill="${tempColor(c.high)}" fill-opacity="0.9" stroke="#fff" stroke-width="1"/>
+        <text x="${(x + rad + 2).toFixed(1)}" y="${(y + 2.5).toFixed(1)}" class="map-city-label ${alert ? 'alert' : ''}">${name} ${c.high}°</text>
+      `;
+    });
+    return dots;
+  }
+
+  fetch('china.json')
+    .then(res => res.json())
+    .then(geo => {
+      let provincePaths = '';  // 省界（虚线）+ 省份填色
+      let outerPath = '';      // 外边界（虚线）+ 九段线
+      geo.features.forEach(f => {
+        const isJD = f.properties.adcode === '100000_JD';  // 九段线
+        const name = f.properties.name;
+        // 该省温度（省份名匹配，去掉"省/市/自治区"后缀）
+        let provHigh = null;
+        for (const k in PROV_TEMP) {
+          if (name && (name.replace(/省|市|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区/g, '') === k
+              || k === name.replace(/省|市|壮族自治区|回族自治区|维吾尔自治区|自治区|特别行政区/g, ''))) {
+            provHigh = Math.round(PROV_TEMP[k].reduce((a, b) => a + b, 0) / PROV_TEMP[k].length);
+            break;
+          }
+        }
+        const fill = provHigh !== null ? tempColor(provHigh) : '#f4f4ef';
+
+        const polys = f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates : [f.geometry.coordinates];
+        polys.forEach(poly => {
+          const rings = isJD ? [poly[0]] : poly;
+          rings.forEach((ring, ri) => {
+            if (ring.length < 3) {
+              const d = ring.map((pt, i) => (i === 0 ? 'M' : 'L') + px(pt[0]).toFixed(1) + ',' + py(pt[1]).toFixed(1)).join(' ');
+              outerPath += `<path d="${d}" fill="none" stroke="#9aa5b1" stroke-width="1.2" stroke-dasharray="6,4"/>`;
+              return;
+            }
+            const d = ring.map((pt, i) => (i === 0 ? 'M' : 'L') + px(pt[0]).toFixed(1) + ',' + py(pt[1]).toFixed(1)).join(' ') + ' Z';
+            if (isJD) {
+              outerPath += `<path d="${d}" fill="none" stroke="#9aa5b1" stroke-width="1.2" stroke-dasharray="6,4"/>`;
+            } else if (ri === 0) {
+              // 外环：填温度色 + 虚线描边
+              outerPath += `<path d="${d}" fill="${fill}" fill-opacity="0.72" stroke="#8a8a82" stroke-width="1" stroke-dasharray="4,3"/>`;
+            } else {
+              provincePaths += `<path d="${d}" fill="none" stroke="#ffffff" stroke-width="0.8" stroke-dasharray="3,2"/>`;
+            }
+          });
+        });
+      });
+      document.getElementById('chinaMap').innerHTML = `
+        <div class="map-title">七大区温度速览 <small>每区一个代表城市</small></div>
+        <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+          ${outerPath}
+          ${provincePaths}
+          ${drawDots()}
+        </svg>
+        <div class="map-legend">
+          <span>-10°</span>
+          <span style="display:inline-flex; height:10px; width:180px; border-radius:5px; overflow:hidden;">
+            ${['#3a6ea5','#5a9bd5','#6db3a8','#a3b86c','#f0c94a','#f39c12','#e74c3c','#c0392b'].map(c=>`<span style="flex:1;height:100%;background:${c};"></span>`).join('')}
+          </span>
+          <span>35°+</span>
+        </div>
+      `;
+    });
+}
+
+function renderRegion(r) {
+  const cities = r.cities.map(c => {
+    const alert = isAlertWeather(c.weather);
+    return `
+    <div class="city-row">
+      <span class="city-province">${c.province}</span>
+      <span class="city-name">${c.name}</span>
+      <span class="city-weather ${alert ? 'weather-alert' : ''}">${weatherIcon(c.weather)} ${c.weather}</span>
+      <span class="city-temp" style="background:${tempColor(c.high)}">${c.high}° / ${c.low}°</span>
+      <span class="city-lastyear">${c.lastYear ? '去年 ' + c.lastYear : ''}</span>
+      <span class="city-trend">${trendSparkline(c.trend)}</span>
+    </div>
+  `;
+  }).join('');
+  return `
+    <div class="region ${r.side}">
+      <div class="region-title">
+        <span class="region-num">${r.id}</span>${r.name}
+        <span class="region-tag">${r.tag}</span>
+      </div>
+      ${cities}
+      <div class="clothing-tip">👕 穿衣建议：${r.clothing}</div>
+      <div class="region-summary">均温 ${r.summary.avg} · 最高 ${r.summary.high} · 最低 ${r.summary.low} · 昼夜温差 ${r.summary.swing} &nbsp; ${r.summary.alert}</div>
+    </div>
+  `;
+}
+
+// 模拟"看明天"——实际上接高德后这里是拉取第二天的真实数据
+function loadTomorrow() {
+  fetch('data.json')
+    .then(res => res.json())
+    .then(data => {
+      // 模拟明天数据：温度随机±3度，日期+1
+      const tomorrow = JSON.parse(JSON.stringify(data));
+      const d = new Date(data.meta.date);
+      d.setDate(d.getDate() + 1);
+      tomorrow.meta.date = d.toISOString().slice(0, 10);
+      tomorrow.meta.version = 'v7-明日预报（模拟）';
+      tomorrow.regions.forEach(r => {
+        r.cities.forEach(c => {
+          c.high += Math.floor(Math.random() * 7) - 3;
+          c.low += Math.floor(Math.random() * 5) - 2;
+        });
+      });
+      renderAll(tomorrow);
+    });
+}
+
+// 初始加载
+fetch('data.json')
+  .then(res => res.json())
+  .then(renderAll);
+</script>
+</body>
+</html>

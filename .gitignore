@@ -1,0 +1,13 @@
+# 敏感凭证（绝不上传）
+.env
+
+# macOS
+.DS_Store
+
+# 生成产物
+data.json
+dashboard.png
+
+# 内部目录 & 打包文件
+.workbuddy/
+weather-daily-report.zip
